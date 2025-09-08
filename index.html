@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daftar Pengunjung Online Gratis</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f9fafb; margin: 0; padding: 20px; }
+    h1 { font-size: 1.5em; }
+    .container { max-width: 1000px; margin: auto; }
+    .card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    label { display: block; margin-top: 10px; font-weight: bold; font-size: 0.9em; }
+    input { width: 100%; padding: 7px; margin-top: 5px; border: 1px solid #ccc; border-radius: 6px; }
+    button { padding: 7px 12px; margin-top: 10px; border: none; border-radius: 6px; cursor: pointer; }
+    button.primary { background: #2563eb; color: white; }
+    button.secondary { background: #f1f5f9; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9em; }
+    th, td { padding: 8px; border: 1px solid #e5e7eb; text-align: left; }
+    th { background: #f3f4f6; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📋 Daftar Pengunjung Online (Gratis)</h1>
+    <p><small>Data tersimpan di browser (localStorage). Tidak butuh server atau database.</small></p>
+
+    <div class="card">
+      <h2>Formulir Pengunjung</h2>
+      <form id="visitorForm">
+        <label>Nama *</label>
+        <input type="text" id="name" required>
+
+        <label>Email</label>
+        <input type="email" id="email">
+
+        <label>No. Telepon</label>
+        <input type="text" id="phone">
+
+        <label>Organisasi / Instansi</label>
+        <input type="text" id="organization">
+
+        <label>Keperluan</label>
+        <input type="text" id="purpose">
+
+        <button type="submit" class="primary">Simpan</button>
+        <button type="reset" class="secondary">Bersihkan</button>
+      </form>
+      <button onclick="exportCSV()" class="secondary">Ekspor CSV</button>
+      <button onclick="clearAll()" class="secondary">Hapus Semua</button>
+    </div>
+
+    <div class="card">
+      <h2>Daftar Pengunjung</h2>
+      <input type="text" id="search" placeholder="Cari nama, email, telepon..." style="margin-bottom:10px;">
+      <table>
+        <thead>
+          <tr>
+            <th>Waktu</th>
+            <th>Nama</th>
+            <th>Email</th>
+            <th>Telepon</th>
+            <th>Organisasi</th>
+            <th>Keperluan</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="visitorList"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'visitor_register_entries_html_v1';
+    let entries = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+    const form = document.getElementById('visitorForm');
+    const list = document.getElementById('visitorList');
+    const searchInput = document.getElementById('search');
+
+    function saveEntries() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    }
+
+    function render() {
+      const q = searchInput.value.toLowerCase();
+      list.innerHTML = '';
+      entries.filter(e => {
+        return (
+          e.name.toLowerCase().includes(q) ||
+          (e.email||'').toLowerCase().includes(q) ||
+          (e.phone||'').toLowerCase().includes(q) ||
+          (e.organization||'').toLowerCase().includes(q) ||
+          (e.purpose||'').toLowerCase().includes(q)
+        );
+      }).forEach(e => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${new Date(e.time).toLocaleString()}</td>
+          <td>${e.name}</td>
+          <td>${e.email||'-'}</td>
+          <td>${e.phone||'-'}</td>
+          <td>${e.organization||'-'}</td>
+          <td>${e.purpose||'-'}</td>
+          <td><button onclick="delEntry('${e.id}')">Hapus</button></td>
+        `;
+        list.appendChild(tr);
+      });
+    }
+
+    form.onsubmit = e => {
+      e.preventDefault();
+      const newEntry = {
+        id: Date.now().toString(),
+        name: document.getElementById('name').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        phone: document.getElementById('phone').value.trim(),
+        organization: document.getElementById('organization').value.trim(),
+        purpose: document.getElementById('purpose').value.trim(),
+        time: new Date().toISOString()
+      };
+      if (!newEntry.name) return alert('Nama wajib diisi!');
+      entries.unshift(newEntry);
+      saveEntries();
+      render();
+      form.reset();
+    };
+
+    function delEntry(id) {
+      if (!confirm('Hapus data ini?')) return;
+      entries = entries.filter(e => e.id !== id);
+      saveEntries();
+      render();
+    }
+
+    function clearAll() {
+      if (!confirm('Hapus semua data?')) return;
+      entries = [];
+      saveEntries();
+      render();
+    }
+
+    function exportCSV() {
+      if (!entries.length) return alert('Tidak ada data.');
+      const header = ['id','name','email','phone','organization','purpose','time'];
+      const rows = entries.map(e => header.map(h => `"${(e[h]||'').replace(/"/g,'""')}"`).join(','));
+      const csv = [header.join(','), ...rows].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'daftar-pengunjung.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    searchInput.oninput = render;
+
+    render();
+  </script>
+</body>
+</html>
